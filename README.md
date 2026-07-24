@@ -5,7 +5,6 @@ Minimal workspace layout:
 - `OFT.Platform.Core.dll`: original unpatched DLL.
 - `OFT.Platform.Core.patched.dll`: patched DLL generated from the original.
 - `patch_atas.py`: reads the original DLL and writes the patched DLL.
-- `install.ps1`: copies the patched DLL into Program Files with the original DLL name.
 
 Current SHA-256 hashes:
 
@@ -63,28 +62,6 @@ python .\patch_atas.py .\OFT.Platform.Core.patched.dll --dry-run
 ```
 
 If the script reports `attention`, the app changed enough that the method RVAs or byte fingerprints in `patch_atas.py` need to be updated before patching.
-
-## Install
-
-Close ATAS X, open PowerShell as Administrator, then run:
-
-```powershell
-.\install.ps1
-```
-
-The installer copies:
-
-```text
-OFT.Platform.Core.patched.dll
-```
-
-to:
-
-```text
-C:\Program Files\ATAS X\OFT.Platform.Core.dll
-```
-
-If the installed file already matches the patched DLL, the installer exits without copying.
 
 ## Patch Notes
 
