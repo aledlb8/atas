@@ -148,6 +148,22 @@ PATCHES = [
         bytes.fromhex("172a"),
     ),
     MethodPatch(
+        "ConnectorsManager.connection-license check",
+        0x7923A4,
+        12,
+        103,
+        bytes.fromhex("036f6d13000a1a2d07260617350f2b03"),
+        bytes.fromhex("172a"),
+    ),
+    MethodPatch(
+        "PlatformViewExtensions.ShowConnectorLimitedMessage",
+        0x78A374,
+        12,
+        94,
+        bytes.fromhex("120028c601000a1e2d3e262612000218"),
+        bytes.fromhex("28c404000a2a"),
+    ),
+    MethodPatch(
         "PayWallExtensions.ShowLimit",
         0x7868F4,
         12,

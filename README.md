@@ -9,8 +9,8 @@ Minimal workspace layout:
 Current SHA-256 hashes:
 
 ```text
-D76606F7F81DB6D2C6491A1E0D0FA5B87C60F667856C5189D96365E3BC05A3E9  OFT.Platform.Core.dll
-CDA7AB188E19AC292D2536D46C506C5966C73A8130DD338583C97A6D1B837EE5  OFT.Platform.Core.patched.dll
+FFAF266C819799044B908A9A1F0EDC1EA6D81229715D2FDC49DF7E820B726139  OFT.Platform.Core.dll
+121A9265397F041871A2FADC1806477D2A88B5BE44AC3F395E832AAA640F488A  OFT.Platform.Core.patched.dll
 ```
 
 ## Build Patched DLL
@@ -48,7 +48,7 @@ python .\patch_atas.py .\OFT.Platform.Core.dll --dry-run
 Expected summary for the original:
 
 ```text
-0 already patched, 20 to patch, 0 need attention
+0 already patched, 22 to patch, 0 need attention
 ```
 
 Expected summary for the patched DLL:
@@ -58,7 +58,7 @@ python .\patch_atas.py .\OFT.Platform.Core.patched.dll --dry-run
 ```
 
 ```text
-20 already patched, 0 to patch, 0 need attention
+22 already patched, 0 to patch, 0 need attention
 ```
 
 If the script reports `attention`, the app changed enough that the method RVAs or byte fingerprints in `patch_atas.py` need to be updated before patching.
@@ -72,5 +72,7 @@ The useful logic is in `OFT.Platform.Core.dll`. The patch changes the paywall/li
 - paywall display helpers return false.
 - license-expired UI helpers return false.
 - `AuthorizationViewModel.IsAuthorized` returns true.
+- connector feature/license checks return allowed.
+- connector-limited license popup returns a completed task without showing.
 
 The DLL also has a ReadyToRun managed native header. That must be cleared, otherwise .NET can run precompiled native method bodies instead of the patched IL. `patch_atas.py` clears that header as part of the patch.
