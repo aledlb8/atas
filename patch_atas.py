@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 - it validates the PE/CLI layout;
-- it checks each known method body against the original byte fingerprint;
+- it resolves patch targets from .NET metadata on every run;
+- it guards relative lookups for obfuscated helpers with structural checks;
 - it treats already-patched methods as OK;
 - it clears the ReadyToRun managed native header;
 - it refuses to write anything if any method is in an unexpected state.
@@ -14,6 +15,8 @@ import dataclasses
 import struct
 import sys
 from pathlib import Path
+
+from dotnet_method_map import CliMetadata, MetadataError, method_info
 
 
 DLL_NAME = "OFT.Platform.Core.dll"
@@ -39,6 +42,18 @@ class MethodPatch:
     patch_bytes: bytes
 
 
+@dataclasses.dataclass(frozen=True)
+class PatchSpec:
+    name: str
+    owner: str
+    method: str
+    patch_bytes: bytes
+    relative_rid: int = 0
+    require_obfuscated: bool = False
+    expected_parameter_count: int | None = None
+    expected_return_element: int | None = None
+
+
 @dataclasses.dataclass
 class Result:
     name: str
@@ -50,190 +65,156 @@ class PatchError(Exception):
     pass
 
 
-PATCHES = [
-    MethodPatch(
+PATCH_SPECS = [
+    PatchSpec(
         "PayWallDataManager.TryCheckAllowFeature<T>",
-        0x9F5868,
-        12,
-        68,
-        bytes.fromhex("0203120028b10e002b2d0a171a2d0326"),
+        "OFT.Platform.Managers.PayWallDataManager",
+        "TryCheckAllowFeature",
         bytes.fromhex("170bde3e"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallDataManager.TryGetLimitValue<T>",
-        0x9F59D4,
-        12,
-        318,
-        bytes.fromhex("14152d03262b030c2b000228a2660006"),
+        "OFT.Platform.Managers.PayWallDataManager",
+        "TryGetLimitValue",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallDataManager.HasPayWallData",
-        0x9F5C60,
-        12,
-        32,
-        bytes.fromhex("0217152d1426031b152d112628b50e00"),
+        "OFT.Platform.Managers.PayWallDataManager",
+        "HasPayWallData",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallDataManager.ExistsEnabledFeature",
-        0x9F5C8C,
-        12,
-        131,
-        bytes.fromhex("73dc660006172d1326027b183b000403"),
+        "OFT.Platform.Managers.PayWallDataManager",
+        "ExistsEnabledFeature",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallDataManager.ExistsFeature",
-        0x9F5C34,
-        12,
-        31,
-        bytes.fromhex("02191d2d13267b183b000403171c2d0b"),
+        "OFT.Platform.Managers.PayWallDataManager",
+        "ExistsFeature",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.IsLimited<T>",
-        0x898220,
-        12,
-        49,
-        bytes.fromhex("021e182d162603151e2d1326041e172d"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "IsLimited",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.ShowIfLimit<T>",
-        0x8982B4,
-        12,
-        57,
-        bytes.fromhex("28e92800066f3717000a031d162c1026"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowIfLimit",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "LicenseInformationViewModelBase.get_IsLicenseExpired",
-        0x937DF0,
-        12,
-        17,
-        bytes.fromhex("02171b2d08267be72900042b03262bf6"),
+        "OFT.Platform.Core.ViewModels.LicenseInformation.LicenseInformationViewModelBase",
+        "get_IsLicenseExpired",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "LicenseState.get_IsLicenseExpired",
-        0xB0D43C,
-        12,
-        17,
-        bytes.fromhex("021b182d08267bd65800042b03262bf6"),
+        "OFT.Platform.ViewModels.LicenseState",
+        "get_IsLicenseExpired",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "LicenseState.get_IsLicenseExpiredMessageError",
-        0xB0D49C,
-        12,
-        17,
-        bytes.fromhex("021e1c2d08267bd95800042b03262bf6"),
+        "OFT.Platform.ViewModels.LicenseState",
+        "get_IsLicenseExpiredMessageError",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "LicenseState.get_ShowAlert",
-        0xB0D4DC,
-        12,
-        17,
-        bytes.fromhex("0219192d08267bdb5800042b03262bf6"),
+        "OFT.Platform.ViewModels.LicenseState",
+        "get_ShowAlert",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "AuthorizationViewModel.get_IsAuthorized",
-        0xAA5480,
-        12,
-        17,
-        bytes.fromhex("021d192d08267b7f4d00042b03262bf6"),
+        "OFT.Platform.ViewModels.Connections.AuthorizationViewModel",
+        "get_IsAuthorized",
         bytes.fromhex("172a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "ConnectorsManager.connection-license check",
-        0x8A4FE0,
-        12,
-        103,
-        bytes.fromhex("036f3b17000a1c2d07260617350f2b03"),
+        "OFT.Platform.Core.Managers.Connections.ConnectorsManager",
+        "EnsureMarketDataConnectorExistsAsync",
         bytes.fromhex("172a"),
+        relative_rid=8,
+        require_obfuscated=True,
+        expected_parameter_count=2,
+        expected_return_element=0x02,
     ),
-    MethodPatch(
+    PatchSpec(
         "ConnectorPayWallRestrictions.category-active-limit mapper",
-        0x90A5E8,
-        12,
-        40,
-        bytes.fromhex("02171d2d19267b5a230004031d192d11"),
+        "OFT.Platform.Core.Services.ConnectorPayWallRestrictions",
+        "GetLimitAddFromCategory",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "SelectConnectorTypeViewModel.server-feature predicate",
-        0xAB4AE0,
-        12,
-        56,
-        bytes.fromhex("031c182d0a26281e2800062c292b0326"),
+        "OFT.Platform.ViewModels.Connections.SelectConnectorTypeViewModel",
+        "InitializeAsync",
         bytes.fromhex("172a"),
+        relative_rid=1,
+        require_obfuscated=True,
+        expected_parameter_count=1,
+        expected_return_element=0x02,
     ),
-    MethodPatch(
+    PatchSpec(
         "PlatformViewExtensions.ShowConnectorLimitedMessage",
-        0x89C1C8,
-        12,
-        94,
-        bytes.fromhex("1200288f01000a162c3e26261200021d"),
+        "OFT.Platform.Core.Extensions.PlatformViewExtensions",
+        "ShowConnectorLimitedMessage",
         bytes.fromhex("28210a000a2a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.ShowLimit",
-        0x898260,
-        12,
-        71,
-        bytes.fromhex("021e1e2d05262c122b03262bf903181b"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowLimit",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.ShowIfEnabledLimit",
-        0x898174,
-        12,
-        43,
-        bytes.fromhex("02037ef0150004252d1b2614fe06ee28"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowIfEnabledLimit",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.ShowIfExistsLimit",
-        0x8981E4,
-        12,
-        47,
-        bytes.fromhex("02037ee4150004252d1f267ee3150004"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowIfExistsLimit",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.ShowIfHeatmapsCountLimit",
-        0x8982FC,
-        12,
-        28,
-        bytes.fromhex("02181a2d10261f42031b192d0b2628f8"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowIfHeatmapsCountLimit",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.ShowIfIndicatorsPerHeatmapLimit",
-        0x898324,
-        12,
-        28,
-        bytes.fromhex("021a1d2d10261f43031c172d0b2628f8"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowIfIndicatorsPerHeatmapLimit",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.ShowIfIndicatorsPerChartLimit",
-        0x89834C,
-        12,
-        35,
-        bytes.fromhex("021d1d2d1426031e1d2d1126041a1d2d"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowIfIndicatorsPerChartLimit",
         bytes.fromhex("162a"),
     ),
-    MethodPatch(
+    PatchSpec(
         "PayWallExtensions.indicator-count helper",
-        0x89837C,
-        12,
-        48,
-        bytes.fromhex("730f290006182d1d2606041d2d1a2626"),
+        "OFT.Platform.Core.Extensions.PayWallExtensions",
+        "ShowIfIndicatorsPerChartLimit",
         bytes.fromhex("162a"),
+        relative_rid=1,
+        require_obfuscated=True,
+        expected_parameter_count=3,
+        expected_return_element=0x02,
     ),
 ]
 
@@ -353,6 +334,139 @@ def parse_method_body(data: bytes | bytearray, offset: int) -> tuple[int, int, i
     code_offset = offset + header_size
     require_range(data, code_offset, code_size, "fat method body")
     return header_size, code_size, code_offset
+
+
+def _compressed_uint_from_blob(blob: bytes, offset: int) -> tuple[int, int]:
+    if offset >= len(blob):
+        raise PatchError("truncated method signature")
+    first = blob[offset]
+    if first & 0x80 == 0:
+        return first, offset + 1
+    if first & 0xC0 == 0x80:
+        if offset + 2 > len(blob):
+            raise PatchError("truncated method signature")
+        return ((first & 0x3F) << 8) | blob[offset + 1], offset + 2
+    if first & 0xE0 == 0xC0:
+        if offset + 4 > len(blob):
+            raise PatchError("truncated method signature")
+        value = (
+            ((first & 0x1F) << 24)
+            | (blob[offset + 1] << 16)
+            | (blob[offset + 2] << 8)
+            | blob[offset + 3]
+        )
+        return value, offset + 4
+    raise PatchError("invalid compressed integer in method signature")
+
+
+def _signature_summary(signature: bytes) -> tuple[int, int]:
+    if not signature:
+        raise PatchError("method has an empty metadata signature")
+    call_convention = signature[0]
+    cursor = 1
+    if call_convention & 0x10:  # IMAGE_CEE_CS_CALLCONV_GENERIC
+        _, cursor = _compressed_uint_from_blob(signature, cursor)
+    parameter_count, cursor = _compressed_uint_from_blob(signature, cursor)
+    if cursor >= len(signature):
+        raise PatchError("method signature has no return type")
+
+    # Custom modifiers and pinned/sentinel markers are not expected on these
+    # return values.  Keeping this check intentionally small means metadata token
+    # renumbering in parameter types does not invalidate an otherwise stable
+    # target between releases.
+    return_element = signature[cursor]
+    return parameter_count, return_element
+
+
+def resolve_patches(
+    data: bytes | bytearray,
+    image: PEImage,
+) -> list[MethodPatch]:
+    """Resolve release-specific MethodDef values from the current assembly.
+
+    Stable targets are found by TypeDef + MethodDef name.  A few obfuscated
+    helpers are located by a stable neighboring MethodDef and a small RID delta;
+    those relative lookups are guarded by owner/name/signature checks so a
+    changed layout fails closed instead of patching the wrong method.
+    """
+
+    try:
+        metadata = CliMetadata(data, image)
+        methods = metadata.methods()
+    except (MetadataError, struct.error) as exc:
+        raise PatchError(f"could not parse CLI metadata: {exc}") from exc
+
+    by_symbol: dict[tuple[str, str], list[object]] = {}
+    by_rid = {method.rid: method for method in methods}
+    for method in methods:
+        by_symbol.setdefault((method.owner, method.name), []).append(method)
+
+    resolved: list[MethodPatch] = []
+    for spec in PATCH_SPECS:
+        anchors = by_symbol.get((spec.owner, spec.method), [])
+        if len(anchors) != 1:
+            raise PatchError(
+                f"{spec.name}: expected exactly one metadata anchor "
+                f"{spec.owner}::{spec.method}, found {len(anchors)}"
+            )
+
+        anchor = anchors[0]
+        target_rid = anchor.rid + spec.relative_rid
+        target = by_rid.get(target_rid)
+        if target is None:
+            raise PatchError(
+                f"{spec.name}: MethodDef RID {target_rid} does not exist "
+                f"(anchor RID {anchor.rid}, delta {spec.relative_rid:+d})"
+            )
+        if target.owner != spec.owner:
+            raise PatchError(
+                f"{spec.name}: relative target moved outside {spec.owner}; "
+                f"found owner {target.owner} at RID {target_rid}"
+            )
+        if spec.require_obfuscated and not target.name.startswith("#="):
+            raise PatchError(
+                f"{spec.name}: relative target is no longer obfuscated; "
+                f"found {target.name!r} at RID {target_rid}"
+            )
+
+        try:
+            info = method_info(data, image, metadata, target, 16)
+        except (MetadataError, struct.error) as exc:
+            raise PatchError(f"{spec.name}: could not read method body: {exc}") from exc
+
+        if spec.expected_parameter_count is not None or spec.expected_return_element is not None:
+            parameter_count, return_element = _signature_summary(info.signature)
+            if (
+                spec.expected_parameter_count is not None
+                and parameter_count != spec.expected_parameter_count
+            ):
+                raise PatchError(
+                    f"{spec.name}: relative target signature changed; "
+                    f"expected {spec.expected_parameter_count} parameters, "
+                    f"found {parameter_count}"
+                )
+            if (
+                spec.expected_return_element is not None
+                and return_element != spec.expected_return_element
+            ):
+                raise PatchError(
+                    f"{spec.name}: relative target return type changed; "
+                    f"expected element 0x{spec.expected_return_element:02x}, "
+                    f"found 0x{return_element:02x}"
+                )
+
+        resolved.append(
+            MethodPatch(
+                name=spec.name,
+                rva=target.rva,
+                expected_header_size=info.header_size,
+                expected_code_size=info.code_size,
+                original_prefix=info.il_prefix,
+                patch_bytes=spec.patch_bytes,
+            )
+        )
+
+    return resolved
 
 
 def patch_ready_to_run(data: bytearray, image: PEImage) -> Result:
@@ -625,6 +739,7 @@ def main(argv: list[str]) -> int:
         original_data = input_path.read_bytes()
         patched_data = bytearray(original_data)
         image = PEImage(patched_data)
+        patches = resolve_patches(patched_data, image)
     except (OSError, PatchError, struct.error) as exc:
         print(f"error: could not read/parse input: {exc}", file=sys.stderr)
         return 2
@@ -637,7 +752,7 @@ def main(argv: list[str]) -> int:
             Result("ReadyToRun managed native header", "attention", str(exc))
         )
 
-    for patch in PATCHES:
+    for patch in patches:
         results.append(apply_method_patch(patched_data, image, patch))
 
     print_results(results, args.dry_run)

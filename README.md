@@ -4,7 +4,10 @@ Minimal workspace layout:
 
 - `OFT.Platform.Core.dll`: original unpatched DLL.
 - `OFT.Platform.Core.patched.dll`: patched DLL generated from the original.
-- `patch_atas.py`: reads the original DLL and writes the patched DLL.
+- `patch_atas.py`: resolves the current targets from .NET metadata, then writes
+  the patched DLL.
+- `dotnet_method_map.py`: metadata parser used by the patcher and available for
+  diagnostics.
 
 Current SHA-256 hashes:
 
@@ -15,11 +18,21 @@ EC459065FF3D679CF2DE38469D3F88297AFECCBAA49885592158E232DABD3351  OFT.Platform.C
 
 ## Build Patched DLL
 
-Default command:
+After an application update, replace `OFT.Platform.Core.dll` with the new
+original DLL and run the same command as before:
 
 ```powershell
 python .\patch_atas.py
 ```
+
+No RVA, method-size, metadata-token, or IL-prefix values need to be copied into
+`patch_atas.py`. They are resolved from the current DLL on every run.
+
+Most targets are located by their stable `TypeDef::MethodDef` names. Three
+obfuscated helper methods are located relative to stable neighboring MethodDefs;
+the patcher verifies their declaring type, obfuscated-name form, parameter count,
+and return type before accepting them. If those relationships change, the run
+fails before writing an output file instead of guessing.
 
 That reads:
 
@@ -38,6 +51,33 @@ Explicit input/output form:
 ```powershell
 python .\patch_atas.py .\OFT.Platform.Core.dll --output .\OFT.Platform.Core.patched.dll
 ```
+
+## Inspect Method Metadata
+
+`dotnet_method_map.py` is a read-only helper that resolves .NET MethodDef
+metadata directly from the DLL. It does not load the assembly and has no
+third-party dependencies.
+
+Resolve one method:
+
+```powershell
+python .\dotnet_method_map.py .\OFT.Platform.Core.dll `
+  --symbol "OFT.Platform.ViewModels.Connections.SelectConnectorTypeViewModel::InitializeAsync"
+```
+
+The output includes the current metadata token, RVA, method-header size, IL
+code size, signature blob, and the first 16 IL bytes. Use `--prefix-bytes N` to
+change the prefix length or `--json` for machine-readable output.
+
+For diagnostics or unrelated reverse-engineering work, save symbols in a text
+file, one `Full.Namespace.Type::Method` per line, then run:
+
+```powershell
+python .\dotnet_method_map.py .\OFT.Platform.Core.dll --symbols-file .\methods.txt --json
+```
+
+Blank lines and `#` comments are ignored. Normal patching does not require a
+symbols file; `patch_atas.py` performs its own target resolution automatically.
 
 Dry-run the original without writing:
 
@@ -61,7 +101,10 @@ python .\patch_atas.py .\OFT.Platform.Core.patched.dll --dry-run
 24 already patched, 0 to patch, 0 need attention
 ```
 
-If the script reports `attention`, the app changed enough that the method RVAs or byte fingerprints in `patch_atas.py` need to be updated before patching.
+If the script reports a metadata-resolution error or `attention`, the relevant
+method or method relationship changed enough that it should be reviewed. Do not
+manually refresh RVAs first; the resolver already handles ordinary relocation,
+token renumbering, method-size changes, and IL-prefix changes.
 
 ## Patch Notes
 
