@@ -9,8 +9,8 @@ Minimal workspace layout:
 Current SHA-256 hashes:
 
 ```text
-DD2D7BA8508C94E7558940E5C61B6FCC83230D8C6ACD4AE20AA40FA0D0CCF852  OFT.Platform.Core.dll
-A65674C359649B4D82C3D835EA2C857243FD34B9CBE823DB66940979BA509EC4  OFT.Platform.Core.patched.dll
+EC459065FF3D679CF2DE38469D3F88297AFECCBAA49885592158E232DABD3351  OFT.Platform.Core.dll
+0E814DACD49F9D8DF0CED94DA5D28CAF88EB658F01E3702C395D5B12D2CA28FE  OFT.Platform.Core.patched.dll
 ```
 
 ## Build Patched DLL
@@ -48,7 +48,7 @@ python .\patch_atas.py .\OFT.Platform.Core.dll --dry-run
 Expected summary for the original:
 
 ```text
-0 already patched, 22 to patch, 0 need attention
+0 already patched, 24 to patch, 0 need attention
 ```
 
 Expected summary for the patched DLL:
@@ -58,7 +58,7 @@ python .\patch_atas.py .\OFT.Platform.Core.patched.dll --dry-run
 ```
 
 ```text
-22 already patched, 0 to patch, 0 need attention
+24 already patched, 0 to patch, 0 need attention
 ```
 
 If the script reports `attention`, the app changed enough that the method RVAs or byte fingerprints in `patch_atas.py` need to be updated before patching.
@@ -73,6 +73,10 @@ The useful logic is in `OFT.Platform.Core.dll`. The patch changes the paywall/li
 - license-expired UI helpers return false.
 - `AuthorizationViewModel.IsAuthorized` returns true.
 - connector feature/license checks return allowed.
+- connector category active-limit checks return no limit.
+- account-plan provider-list checks allow all server-backed connectors.
 - connector-limited license popup returns a completed task without showing.
 
 The DLL also has a ReadyToRun managed native header. That must be cleared, otherwise .NET can run precompiled native method bodies instead of the patched IL. `patch_atas.py` clears that header as part of the patch.
+
+For methods without exception-handler sections, the patcher replaces the IL body and shrinks the fat method header's `CodeSize` to the exact replacement length. This is required by the .NET 10 JIT: leaving the old declared code length after an early `ret`, even with `nop` padding, can produce `InvalidProgramException`. Methods with exception-handler sections keep their offset-safe original code size.

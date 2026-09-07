@@ -53,170 +53,186 @@ class PatchError(Exception):
 PATCHES = [
     MethodPatch(
         "PayWallDataManager.TryCheckAllowFeature<T>",
-        0x8C5328,
+        0x9F5868,
         12,
         68,
-        bytes.fromhex("02031200280d0d002b2d0a171c2d0326"),
+        bytes.fromhex("0203120028b10e002b2d0a171a2d0326"),
         bytes.fromhex("170bde3e"),
     ),
     MethodPatch(
         "PayWallDataManager.TryGetLimitValue<T>",
-        0x8C5494,
+        0x9F59D4,
         12,
         318,
-        bytes.fromhex("141b2d03262b030c2b0002286c5d0006"),
+        bytes.fromhex("14152d03262b030c2b000228a2660006"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallDataManager.HasPayWallData",
-        0x8C5720,
+        0x9F5C60,
         12,
         32,
-        bytes.fromhex("0216172d142603171c2d112628110d00"),
+        bytes.fromhex("0217152d1426031b152d112628b50e00"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallDataManager.ExistsEnabledFeature",
-        0x8C574C,
+        0x9F5C8C,
         12,
-        128,
-        bytes.fromhex("738e5d0006182d1326027bd934000403"),
+        131,
+        bytes.fromhex("73dc660006172d1326027b183b000403"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallDataManager.ExistsFeature",
-        0x8C56F4,
+        0x9F5C34,
         12,
         31,
-        bytes.fromhex("0216152d13267bd93400040315182d0b"),
+        bytes.fromhex("02191d2d13267b183b000403171c2d0b"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.IsLimited<T>",
-        0x7860EC,
+        0x898220,
         12,
         49,
-        bytes.fromhex("0215182d1626031b172d1326041c182d"),
+        bytes.fromhex("021e182d162603151e2d1326041e172d"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.ShowIfLimit<T>",
-        0x786180,
+        0x8982B4,
         12,
         57,
-        bytes.fromhex("28082400066f6913000a03181a2d1026"),
+        bytes.fromhex("28e92800066f3717000a031d162c1026"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "LicenseInformationViewModelBase.get_IsLicenseExpired",
-        0x80FCEC,
+        0x937DF0,
         12,
         17,
-        bytes.fromhex("021b1c2d08267b802400042b03262bf6"),
+        bytes.fromhex("02171b2d08267be72900042b03262bf6"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "LicenseState.get_IsLicenseExpired",
-        0x9BBDD8,
+        0xB0D43C,
         12,
         17,
-        bytes.fromhex("021c162c08267baa4f00042b03262bf6"),
+        bytes.fromhex("021b182d08267bd65800042b03262bf6"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "LicenseState.get_IsLicenseExpiredMessageError",
-        0x9BBE38,
+        0xB0D49C,
         12,
         17,
-        bytes.fromhex("021d1e2d08267bad4f00042b03262bf6"),
+        bytes.fromhex("021e1c2d08267bd95800042b03262bf6"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "LicenseState.get_ShowAlert",
-        0x9BBE78,
+        0xB0D4DC,
         12,
         17,
-        bytes.fromhex("0215192d08267baf4f00042b03262bf6"),
+        bytes.fromhex("0219192d08267bdb5800042b03262bf6"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "AuthorizationViewModel.get_IsAuthorized",
-        0x95B690,
+        0xAA5480,
         12,
         17,
-        bytes.fromhex("0219152d08267bfb4400042b03262bf6"),
+        bytes.fromhex("021d192d08267b7f4d00042b03262bf6"),
         bytes.fromhex("172a"),
     ),
     MethodPatch(
         "ConnectorsManager.connection-license check",
-        0x791BDC,
+        0x8A4FE0,
         12,
         103,
-        bytes.fromhex("036f6d13000a1a2d07260617350f2b03"),
+        bytes.fromhex("036f3b17000a1c2d07260617350f2b03"),
+        bytes.fromhex("172a"),
+    ),
+    MethodPatch(
+        "ConnectorPayWallRestrictions.category-active-limit mapper",
+        0x90A5E8,
+        12,
+        40,
+        bytes.fromhex("02171d2d19267b5a230004031d192d11"),
+        bytes.fromhex("162a"),
+    ),
+    MethodPatch(
+        "SelectConnectorTypeViewModel.server-feature predicate",
+        0xAB4AE0,
+        12,
+        56,
+        bytes.fromhex("031c182d0a26281e2800062c292b0326"),
         bytes.fromhex("172a"),
     ),
     MethodPatch(
         "PlatformViewExtensions.ShowConnectorLimitedMessage",
-        0x789BAC,
+        0x89C1C8,
         12,
         94,
-        bytes.fromhex("120028c401000a1c2d3e262612000218"),
-        bytes.fromhex("28c404000a2a"),
+        bytes.fromhex("1200288f01000a162c3e26261200021d"),
+        bytes.fromhex("28210a000a2a"),
     ),
     MethodPatch(
         "PayWallExtensions.ShowLimit",
-        0x78612C,
+        0x898260,
         12,
         71,
-        bytes.fromhex("0215182d05262c122b03262bf9031619"),
+        bytes.fromhex("021e1e2d05262c122b03262bf903181b"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.ShowIfEnabledLimit",
-        0x786040,
+        0x898174,
         12,
         43,
-        bytes.fromhex("02037e62130004252d1b2614fe060d24"),
+        bytes.fromhex("02037ef0150004252d1b2614fe06ee28"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.ShowIfExistsLimit",
-        0x7860B0,
+        0x8981E4,
         12,
         47,
-        bytes.fromhex("02037e5a130004252d1f267e59130004"),
+        bytes.fromhex("02037ee4150004252d1f267ee3150004"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.ShowIfHeatmapsCountLimit",
-        0x7861C8,
+        0x8982FC,
         12,
         28,
-        bytes.fromhex("0219182d10261f42031a1b2d0b262817"),
+        bytes.fromhex("02181a2d10261f42031b192d0b2628f8"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.ShowIfIndicatorsPerHeatmapLimit",
-        0x7861F0,
+        0x898324,
         12,
         28,
-        bytes.fromhex("02171c2d10261f43031e192d0b262817"),
+        bytes.fromhex("021a1d2d10261f43031c172d0b2628f8"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.ShowIfIndicatorsPerChartLimit",
-        0x786218,
+        0x89834C,
         12,
         35,
-        bytes.fromhex("021b162c1426031e182d11260418162c"),
+        bytes.fromhex("021d1d2d1426031e1d2d1126041a1d2d"),
         bytes.fromhex("162a"),
     ),
     MethodPatch(
         "PayWallExtensions.indicator-count helper",
-        0x786248,
+        0x89837C,
         12,
         48,
-        bytes.fromhex("73252400061e2d1d260604172d1a2626"),
+        bytes.fromhex("730f290006182d1d2606041d2d1a2626"),
         bytes.fromhex("162a"),
     ),
 ]
@@ -364,7 +380,113 @@ def apply_method_patch(data: bytearray, image: PEImage, patch: MethodPatch) -> R
     except PatchError as exc:
         return Result(patch.name, "attention", str(exc))
 
-    if header_size != patch.expected_header_size or code_size != patch.expected_code_size:
+    if header_size != patch.expected_header_size:
+        return Result(
+            patch.name,
+            "attention",
+            (
+                "method shape changed: "
+                f"header {header_size} bytes, code {code_size} bytes; "
+                f"expected header {patch.expected_header_size}, "
+                f"code {patch.expected_code_size}"
+            ),
+        )
+
+    if len(patch.patch_bytes) > code_size:
+        return Result(
+            patch.name,
+            "attention",
+            (
+                f"patch is {len(patch.patch_bytes)} bytes but method body is only "
+                f"{code_size} bytes at RVA 0x{patch.rva:x}"
+            ),
+        )
+
+    # Most target methods have no exception-handling data after their IL body.
+    # For those methods, replace the body and shrink the fat header's CodeSize
+    # to the exact replacement length.  .NET 10 can reject an early-return body
+    # when the header still declares the old trailing bytes (even if those bytes
+    # are NOP padding), so the unused space must be outside the declared IL body.
+    #
+    # Methods with CorILMethod_MoreSects set have EH clauses whose offsets are
+    # tied to the original body, so they keep their deliberately crafted
+    # prefix-only patches instead.
+    has_extra_sections = False
+    if header_size != 1:
+        has_extra_sections = bool(u16(data, method_offset) & 0x8)
+
+    if not has_extra_sections:
+        # Compact patched form: the method header already declares exactly the
+        # replacement bytes as its IL body.
+        if code_size == len(patch.patch_bytes):
+            current_code = bytes(data[code_offset : code_offset + code_size])
+            if current_code == patch.patch_bytes:
+                return Result(patch.name, "already", f"RVA 0x{patch.rva:x}")
+            return Result(
+                patch.name,
+                "attention",
+                (
+                    f"unexpected compact method bytes at RVA 0x{patch.rva:x}; "
+                    f"found {current_code.hex()}"
+                ),
+            )
+
+        if code_size != patch.expected_code_size:
+            return Result(
+                patch.name,
+                "attention",
+                (
+                    "method shape changed: "
+                    f"header {header_size} bytes, code {code_size} bytes; "
+                    f"expected header {patch.expected_header_size}, "
+                    f"code {patch.expected_code_size} (or compact patched size "
+                    f"{len(patch.patch_bytes)})"
+                ),
+            )
+
+        current_code = bytes(data[code_offset : code_offset + code_size])
+        if current_code == patch.patch_bytes:
+            return Result(patch.name, "already", f"RVA 0x{patch.rva:x}")
+
+        # Accept both previous patch forms as upgrade paths: the old short-prefix
+        # patch and the later full-size NOP-padded body.  This lets an installed
+        # DLL be repaired without first restoring the original file.
+        legacy_prefix_patch = current_code.startswith(patch.patch_bytes)
+        if not legacy_prefix_patch:
+            current_prefix = bytes(
+                data[code_offset : code_offset + len(patch.original_prefix)]
+            )
+            if current_prefix != patch.original_prefix:
+                return Result(
+                    patch.name,
+                    "attention",
+                    (
+                        f"unexpected method bytes at RVA 0x{patch.rva:x}; "
+                        f"found {current_prefix.hex()}"
+                    ),
+                )
+
+        data[code_offset : code_offset + len(patch.patch_bytes)] = patch.patch_bytes
+        data[
+            code_offset + len(patch.patch_bytes) : code_offset + code_size
+        ] = b"\x00" * (code_size - len(patch.patch_bytes))
+
+        # All non-EH targets in this patch table use fat method headers.  Keep
+        # the existing header/metadata in place and only shrink the declared IL
+        # byte count.  The following bytes remain harmless alignment/padding.
+        if header_size == 1:
+            return Result(
+                patch.name,
+                "attention",
+                "cannot compact a tiny-header method in place",
+            )
+        struct.pack_into("<I", data, method_offset + 4, len(patch.patch_bytes))
+        detail = f"RVA 0x{patch.rva:x}"
+        if legacy_prefix_patch:
+            detail += " (upgrade previous patch form)"
+        return Result(patch.name, "patch", detail)
+
+    if code_size != patch.expected_code_size:
         return Result(
             patch.name,
             "attention",
