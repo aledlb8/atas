@@ -12,8 +12,8 @@ Minimal workspace layout:
 Current SHA-256 hashes:
 
 ```text
-EC459065FF3D679CF2DE38469D3F88297AFECCBAA49885592158E232DABD3351  OFT.Platform.Core.dll
-0E814DACD49F9D8DF0CED94DA5D28CAF88EB658F01E3702C395D5B12D2CA28FE  OFT.Platform.Core.patched.dll
+C0825A05FAD312F93158A6D83A64B448E7F6AA43940B02D80448F7D247FF7D20  OFT.Platform.Core.dll
+D4743C0A4771F234B0CE266C03F6A0B7B451428C039DCDDCB0787FC7BE36AE72  OFT.Platform.Core.patched.dll
 ```
 
 ## Build Patched DLL
@@ -88,7 +88,7 @@ python .\patch_atas.py .\OFT.Platform.Core.dll --dry-run
 Expected summary for the original:
 
 ```text
-0 already patched, 24 to patch, 0 need attention
+0 already patched, 25 to patch, 0 need attention
 ```
 
 Expected summary for the patched DLL:
@@ -98,7 +98,7 @@ python .\patch_atas.py .\OFT.Platform.Core.patched.dll --dry-run
 ```
 
 ```text
-24 already patched, 0 to patch, 0 need attention
+25 already patched, 0 to patch, 0 need attention
 ```
 
 If the script reports a metadata-resolution error or `attention`, the relevant
@@ -112,6 +112,8 @@ The useful logic is in `OFT.Platform.Core.dll`. The patch changes the paywall/li
 
 - `PayWallDataManager.TryCheckAllowFeature<T>()` returns allowed.
 - limit/query helpers return not limited.
+- the default-aware market-data request corrector does not substitute a
+  fallback history limit when no paywall limit exists.
 - paywall display helpers return false.
 - license-expired UI helpers return false.
 - `AuthorizationViewModel.IsAuthorized` returns true.

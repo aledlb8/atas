@@ -79,6 +79,12 @@ PATCH_SPECS = [
         bytes.fromhex("162a"),
     ),
     PatchSpec(
+        "DefaultAwarePayWallRequestLimitCorrector<T>.TryResolveLimit",
+        "OFT.Platform.Core.Marketing.DefaultAwarePayWallRequestLimitCorrector`1",
+        "TryResolveLimit",
+        bytes.fromhex("162a"),
+    ),
+    PatchSpec(
         "PayWallDataManager.HasPayWallData",
         "OFT.Platform.Managers.PayWallDataManager",
         "HasPayWallData",
