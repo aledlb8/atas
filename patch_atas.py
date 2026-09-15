@@ -21,6 +21,8 @@ from dotnet_method_map import CliMetadata, MetadataError, method_info
 
 DLL_NAME = "OFT.Platform.Core.dll"
 PATCHED_DLL_NAME = "OFT.Platform.Core.patched.dll"
+CORE_DLL_NAME = "OFT.Core.dll"
+PATCHED_CORE_DLL_NAME = "OFT.Core.patched.dll"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -65,7 +67,7 @@ class PatchError(Exception):
     pass
 
 
-PATCH_SPECS = [
+PLATFORM_PATCH_SPECS = [
     PatchSpec(
         "PayWallDataManager.TryCheckAllowFeature<T>",
         "OFT.Platform.Managers.PayWallDataManager",
@@ -223,6 +225,24 @@ PATCH_SPECS = [
         expected_return_element=0x02,
     ),
 ]
+
+
+CORE_PATCH_SPECS = [
+    PatchSpec(
+        "RequestLimitCorrector.TryGetLimit<TRequest>",
+        "OFT.Core.DataProvider.RequestLimitCorrector",
+        "TryGetLimit",
+        bytes.fromhex("162a"),
+    ),
+]
+
+
+PATCH_SPECS_BY_DLL = {
+    DLL_NAME.lower(): PLATFORM_PATCH_SPECS,
+    PATCHED_DLL_NAME.lower(): PLATFORM_PATCH_SPECS,
+    CORE_DLL_NAME.lower(): CORE_PATCH_SPECS,
+    PATCHED_CORE_DLL_NAME.lower(): CORE_PATCH_SPECS,
+}
 
 
 def u16(data: bytes | bytearray, offset: int) -> int:
@@ -387,6 +407,7 @@ def _signature_summary(signature: bytes) -> tuple[int, int]:
 def resolve_patches(
     data: bytes | bytearray,
     image: PEImage,
+    specs: list[PatchSpec],
 ) -> list[MethodPatch]:
     """Resolve release-specific MethodDef values from the current assembly.
 
@@ -408,7 +429,7 @@ def resolve_patches(
         by_symbol.setdefault((method.owner, method.name), []).append(method)
 
     resolved: list[MethodPatch] = []
-    for spec in PATCH_SPECS:
+    for spec in specs:
         anchors = by_symbol.get((spec.owner, spec.method), [])
         if len(anchors) != 1:
             raise PatchError(
@@ -640,7 +661,19 @@ def apply_method_patch(data: bytearray, image: PEImage, patch: MethodPatch) -> R
 def default_output_for(input_path: Path) -> Path:
     if input_path.name.lower() == DLL_NAME.lower():
         return input_path.with_name(PATCHED_DLL_NAME)
+    if input_path.name.lower() == CORE_DLL_NAME.lower():
+        return input_path.with_name(PATCHED_CORE_DLL_NAME)
     return input_path.with_name(f"{input_path.stem}.patched{input_path.suffix}")
+
+
+def patch_specs_for(input_path: Path) -> list[PatchSpec]:
+    specs = PATCH_SPECS_BY_DLL.get(input_path.name.lower())
+    if specs is None:
+        supported = ", ".join(sorted(PATCH_SPECS_BY_DLL))
+        raise PatchError(
+            f"unsupported input DLL {input_path.name!r}; supported names: {supported}"
+        )
+    return specs
 
 
 def resolve_paths(args: argparse.Namespace) -> tuple[Path, Path]:
@@ -690,12 +723,18 @@ def print_results(results: list[Result], dry_run: bool) -> None:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Read an original OFT.Platform.Core.dll and write a patched copy."
+        description=(
+            "Read an original OFT.Platform.Core.dll or OFT.Core.dll and write "
+            "a patched copy."
+        )
     )
     parser.add_argument(
         "input",
         nargs="?",
-        help=f"Original DLL to patch. Defaults to {DLL_NAME} beside this script.",
+        help=(
+            f"Original DLL to patch ({DLL_NAME} or {CORE_DLL_NAME}). "
+            f"Defaults to {DLL_NAME} beside this script."
+        ),
     )
     parser.add_argument(
         "-i",
@@ -745,7 +784,8 @@ def main(argv: list[str]) -> int:
         original_data = input_path.read_bytes()
         patched_data = bytearray(original_data)
         image = PEImage(patched_data)
-        patches = resolve_patches(patched_data, image)
+        specs = patch_specs_for(input_path)
+        patches = resolve_patches(patched_data, image, specs)
     except (OSError, PatchError, struct.error) as exc:
         print(f"error: could not read/parse input: {exc}", file=sys.stderr)
         return 2
