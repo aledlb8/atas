@@ -153,7 +153,7 @@ PLATFORM_PATCH_SPECS = [
         bytes.fromhex("172a"),
         relative_rid=8,
         require_obfuscated=True,
-        expected_parameter_count=2,
+        expected_parameter_count=1,
         expected_return_element=0x02,
     ),
     PatchSpec(
@@ -167,7 +167,7 @@ PLATFORM_PATCH_SPECS = [
         "OFT.Platform.ViewModels.Connections.SelectConnectorTypeViewModel",
         "InitializeAsync",
         bytes.fromhex("172a"),
-        relative_rid=1,
+        relative_rid=2,
         require_obfuscated=True,
         expected_parameter_count=1,
         expected_return_element=0x02,
