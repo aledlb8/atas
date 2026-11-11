@@ -147,6 +147,12 @@ PLATFORM_PATCH_SPECS = [
         bytes.fromhex("172a"),
     ),
     PatchSpec(
+        "AgentDataAccess.get_IsAllowed",
+        "OFT.Platform.Services.AIConnect.AgentDataAccess",
+        "get_IsAllowed",
+        bytes.fromhex("172a"),
+    ),
+    PatchSpec(
         "ConnectorsManager.connection-license check",
         "OFT.Platform.Core.Managers.Connections.ConnectorsManager",
         "EnsureMarketDataConnectorExistsAsync",
