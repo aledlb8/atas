@@ -1,143 +1,246 @@
-# ATAS Patch
+# ATAS Patcher
 
-Minimal workspace layout:
+## Quick Start
 
-- `OFT.Platform.Core.dll`: original unpatched DLL.
-- `OFT.Platform.Core.patched.dll`: patched DLL generated from the original.
-- `OFT.Core.dll`: original core DLL containing the final market-data fallback.
-- `OFT.Core.patched.dll`: patched core DLL generated from the original.
-- `patch_atas.py`: resolves the current targets from .NET metadata, then writes
-  the patched DLL.
-- `dotnet_method_map.py`: metadata parser used by the patcher and available for
-  diagnostics.
+You do not need to find method addresses or edit the DLLs manually. The script
+locates the required methods and creates patched copies for you.
 
-Current SHA-256 hashes:
+### What you need
 
-```text
-C0825A05FAD312F93158A6D83A64B448E7F6AA43940B02D80448F7D247FF7D20  OFT.Platform.Core.dll
-D4743C0A4771F234B0CE266C03F6A0B7B451428C039DCDDCB0787FC7BE36AE72  OFT.Platform.Core.patched.dll
-7DB42C1B7F15BB1A03C67099F03210551889E2B81C9C711D64509858C8D2EE45  OFT.Core.dll
-A00DC9915BFDF2E65257071FFAE5840CC44B9F692897179701AEC7E82FF2105B  OFT.Core.patched.dll
+- Python 3 installed (`py` or `python` must work in PowerShell).
+- The original `OFT.Platform.Core.dll` file.
+- The original `OFT.Core.dll` file.
+- All files placed in the same folder as `patch_atas.py`.
+
+Keep a backup of the original DLLs. The script normally writes new files and
+does not replace the originals.
+
+### Create both patched DLLs
+
+Open PowerShell in this folder and run:
+
+```powershell
+py .\patch_atas.py
+py .\patch_atas.py .\OFT.Core.dll
 ```
 
-## Build Patched DLL
-
-After an application update, replace both original DLLs with the new versions
-and build both patched copies:
+If your system uses `python` instead of `py`, run:
 
 ```powershell
 python .\patch_atas.py
 python .\patch_atas.py .\OFT.Core.dll
 ```
 
-No RVA, method-size, metadata-token, or IL-prefix values need to be copied into
-`patch_atas.py`. They are resolved from the current DLL on every run.
+The commands create:
 
-Most targets are located by their stable `TypeDef::MethodDef` names. Three
-obfuscated helper methods are located relative to stable neighboring MethodDefs;
-the patcher verifies their declaring type, obfuscated-name form, parameter count,
-and return type before accepting them. If those relationships change, the run
-fails before writing an output file instead of guessing.
+- `OFT.Platform.Core.patched.dll`
+- `OFT.Core.patched.dll`
 
-That reads:
+Both patched DLLs are required. Use the generated copies, renamve them
+to its original name and replaced them wherever you have installed ATAS.
 
-```text
-OFT.Platform.Core.dll
-```
+### How to recognize success
 
-and writes/replaces:
+For an original `OFT.Platform.Core.dll`, the expected summary is:
 
 ```text
-OFT.Platform.Core.patched.dll
+Summary: 0 already patched, 26 to patch, 0 need attention.
 ```
 
-Explicit input/output form:
+For an original `OFT.Core.dll`, the expected summary is:
 
-```powershell
-python .\patch_atas.py .\OFT.Platform.Core.dll --output .\OFT.Platform.Core.patched.dll
-python .\patch_atas.py .\OFT.Core.dll --output .\OFT.Core.patched.dll
+```text
+Summary: 0 already patched, 2 to patch, 0 need attention.
 ```
 
-## Inspect Method Metadata
+The script then prints the path of the patched DLL it wrote. If it says
+`Output already up to date`, the existing output already contains the same
+patches and does not need to be rewritten.
 
-`dotnet_method_map.py` is a read-only helper that resolves .NET MethodDef
-metadata directly from the DLL. It does not load the assembly and has no
-third-party dependencies.
+### Check without creating a file
 
-Resolve one method:
+Use `--dry-run` to inspect a DLL without changing or writing anything:
 
 ```powershell
-python .\dotnet_method_map.py .\OFT.Platform.Core.dll `
+py .\patch_atas.py .\OFT.Platform.Core.dll --dry-run
+py .\patch_atas.py .\OFT.Core.dll --dry-run
+```
+
+To verify generated copies, run:
+
+```powershell
+py .\patch_atas.py .\OFT.Platform.Core.patched.dll --dry-run
+py .\patch_atas.py .\OFT.Core.patched.dll --dry-run
+```
+
+The expected summaries are:
+
+```text
+Summary: 26 already patched, 0 to patch, 0 need attention.
+Summary: 2 already patched, 0 to patch, 0 need attention.
+```
+
+## Common Problems
+
+### `py` is not recognized
+
+Install Python 3 or replace `py` with `python` in the commands.
+
+### Input file not found
+
+Make sure the two original DLLs are beside `patch_atas.py`, or provide the full
+path to the input file.
+
+### Metadata, signature, or relative-target error
+
+The binary changed enough that one of the patcher's safety checks no
+longer matches. The script stops before writing an output rather than guessing
+and modifying the wrong method. The affected target must be reviewed and the
+corresponding patch specification updated.
+
+### `need attention` is not zero
+
+Do not use that output. A method contains bytes that are neither the expected
+original code nor the expected patch. Restore the original DLL and
+try again, or inspect the reported method.
+
+## Workspace Files
+
+- `patch_atas.py` — resolves targets, validates method bodies, and writes the
+  patched DLL.
+- `dotnet_method_map.py` — read-only .NET metadata inspection helper used for
+  diagnostics.
+- `OFT.Platform.Core.dll` — original platform assembly.
+- `OFT.Platform.Core.patched.dll` — generated patched platform assembly.
+- `OFT.Core.dll` — original core assembly.
+- `OFT.Core.patched.dll` — generated patched core assembly.
+
+---
+
+# Technical Reference
+
+## Input and output selection
+
+With no input argument, `patch_atas.py` reads `OFT.Platform.Core.dll` beside
+the script and writes `OFT.Platform.Core.patched.dll`.
+
+Explicit input and output paths are also supported:
+
+```powershell
+py .\patch_atas.py .\OFT.Platform.Core.dll `
+  --output .\OFT.Platform.Core.patched.dll
+
+py .\patch_atas.py .\OFT.Core.dll `
+  --output .\OFT.Core.patched.dll
+```
+
+The alternative `--input` form is equivalent:
+
+```powershell
+py .\patch_atas.py --input .\OFT.Platform.Core.dll --dry-run
+```
+
+Run `py .\patch_atas.py --help` for the complete command-line reference.
+
+## Target resolution and validation
+
+The patcher parses the PE and CLI metadata directly. It does not load or
+execute either assembly and has no third-party Python dependencies.
+
+Most targets are resolved by a stable `TypeDef::MethodDef` pair. A small number
+of obfuscated compiler-generated helpers are resolved by their position relative
+to a stable neighboring method. Before accepting a relative target, the patcher
+checks its declaring type, obfuscated-name form, parameter count, and return
+type.
+
+This design avoids hard-coded RVAs, metadata tokens, method sizes, and IL
+prefixes. Ordinary relocation and token renumbering therefore do not require a
+manual update. If a structural relationship changes, resolution fails closed
+before any output is written.
+
+## Patch behavior
+
+The useful logic is split between `OFT.Platform.Core.dll` and `OFT.Core.dll`,
+which is why both generated files are required.
+
+The platform patches make the treat restricted functionality as
+available:
+
+- feature checks return allowed;
+- limit-query helpers report no limit;
+- paywall and license-expired UI helpers return false;
+- authorization checks return true;
+- connector feature and category-limit checks allow access;
+- provider-list checks allow server-backed connectors;
+- the connector-limited popup completes without being displayed;
+- AI-agent market-data policy results report `IsAllowed = true` while retaining
+  source name, source type, and delay metadata;
+- the default-aware request corrector does not insert a fallback history limit.
+
+The core patch changes the final request-limit fallback so it reports no limit
+instead of trimming real-time chart history to ten days.
+
+## ReadyToRun handling
+
+Both assemblies contain a ReadyToRun managed native header. If it remains
+active, .NET may execute precompiled native bodies instead of the modified IL.
+The patcher clears the managed native header in each generated DLL so the
+runtime uses the patched method bodies.
+
+The ReadyToRun header counts as one result in each summary. Consequently:
+
+- the platform assembly reports 26 total patch operations;
+- the core assembly reports 2 total patch operations.
+
+## Method-body rewriting
+
+For methods without exception-handler sections, the patcher replaces the IL
+body and changes a fat method header's `CodeSize` to the exact replacement
+length. This is required for the .NET 10 JIT: leaving the original declared
+length after an early `ret`, even with `nop` padding, can produce an
+`InvalidProgramException`.
+
+Methods with exception-handler sections retain their original code size so the
+section offsets remain valid.
+
+## Inspecting .NET method metadata
+
+`dotnet_method_map.py` resolves MethodDef information without loading the
+assembly. To inspect one method:
+
+```powershell
+py .\dotnet_method_map.py .\OFT.Platform.Core.dll `
   --symbol "OFT.Platform.ViewModels.Connections.SelectConnectorTypeViewModel::InitializeAsync"
 ```
 
-The output includes the current metadata token, RVA, method-header size, IL
-code size, signature blob, and the first 16 IL bytes. Use `--prefix-bytes N` to
-change the prefix length or `--json` for machine-readable output.
+The output includes the metadata token, RID, RVA, method-header size, IL code
+size, signature blob, and initial IL bytes. Use `--prefix-bytes N` to change the
+prefix length or `--json` for machine-readable output.
 
-For diagnostics or unrelated reverse-engineering work, save symbols in a text
-file, one `Full.Namespace.Type::Method` per line, then run:
-
-```powershell
-python .\dotnet_method_map.py .\OFT.Platform.Core.dll --symbols-file .\methods.txt --json
-```
-
-Blank lines and `#` comments are ignored. Normal patching does not require a
-symbols file; `patch_atas.py` performs its own target resolution automatically.
-
-Dry-run the original without writing:
+For multiple symbols, create a text file containing one
+`Full.Namespace.Type::Method` per line, then run:
 
 ```powershell
-python .\patch_atas.py .\OFT.Platform.Core.dll --dry-run
+py .\dotnet_method_map.py .\OFT.Platform.Core.dll `
+  --symbols-file .\methods.txt --json
 ```
 
-Expected summary for the original:
+Blank lines and lines beginning with `#` are ignored. A symbols file is only a
+diagnostic convenience; normal patching resolves its own target list.
 
-```text
-0 already patched, 25 to patch, 0 need attention
-```
+## Reproducible hashes
 
-Expected summary for the patched DLL:
+DLL hashes change whenever it publishes a new build, so this README
+does not store fixed values. Calculate the hashes for the exact files in your
+workspace with:
 
 ```powershell
-python .\patch_atas.py .\OFT.Platform.Core.patched.dll --dry-run
+Get-FileHash -Algorithm SHA256 `
+  .\OFT.Platform.Core.dll, `
+  .\OFT.Platform.Core.patched.dll, `
+  .\OFT.Core.dll, `
+  .\OFT.Core.patched.dll
 ```
 
-```text
-25 already patched, 0 to patch, 0 need attention
-```
-
-The `OFT.Core.dll` check reports `0 already patched, 2 to patch` for the
-original and `2 already patched, 0 to patch` for the patched copy. The second
-target in each count is the ReadyToRun header.
-
-If the script reports a metadata-resolution error or `attention`, the relevant
-method or method relationship changed enough that it should be reviewed. Do not
-manually refresh RVAs first; the resolver already handles ordinary relocation,
-token renumbering, method-size changes, and IL-prefix changes.
-
-## Patch Notes
-
-The useful logic is split between `OFT.Platform.Core.dll` and `OFT.Core.dll`.
-Both patched DLLs must be installed. The patch changes the paywall/license
-checks so limited features are treated as available:
-
-- `PayWallDataManager.TryCheckAllowFeature<T>()` returns allowed.
-- limit/query helpers return not limited.
-- the default-aware market-data request corrector does not substitute a
-  fallback history limit when no paywall limit exists.
-- the final core request-limit fallback returns no limit instead of trimming
-  real-time chart history to 10 days.
-- paywall display helpers return false.
-- license-expired UI helpers return false.
-- `AuthorizationViewModel.IsAuthorized` returns true.
-- connector feature/license checks return allowed.
-- connector category active-limit checks return no limit.
-- account-plan provider-list checks allow all server-backed connectors.
-- connector-limited license popup returns a completed task without showing.
-
-Both DLLs have ReadyToRun managed native headers. Those must be cleared,
-otherwise .NET can run precompiled native method bodies instead of the patched
-IL. `patch_atas.py` clears the relevant header as part of each patch.
-
-For methods without exception-handler sections, the patcher replaces the IL body and shrinks the fat method header's `CodeSize` to the exact replacement length. This is required by the .NET 10 JIT: leaving the old declared code length after an early `ret`, even with `nop` padding, can produce `InvalidProgramException`. Methods with exception-handler sections keep their offset-safe original code size.
+Record both original and patched hashes when documenting a solution
+so another participant can identify the exact build that was tested.
