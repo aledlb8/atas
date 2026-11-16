@@ -69,6 +69,12 @@ class PatchError(Exception):
 
 PLATFORM_PATCH_SPECS = [
     PatchSpec(
+        "AccountInfoProviderExtensions.IsExpired",
+        "OFT.Platform.Core.Extensions.AccountInfoProviderExtensions",
+        "IsExpired",
+        bytes.fromhex("162a"),
+    ),
+    PatchSpec(
         "PayWallDataManager.TryCheckAllowFeature<T>",
         "OFT.Platform.Managers.PayWallDataManager",
         "TryCheckAllowFeature",
@@ -144,6 +150,12 @@ PLATFORM_PATCH_SPECS = [
         "AuthorizationViewModel.get_IsAuthorized",
         "OFT.Platform.ViewModels.Connections.AuthorizationViewModel",
         "get_IsAuthorized",
+        bytes.fromhex("172a"),
+    ),
+    PatchSpec(
+        "PlatformTradingCore.get_IsFullLicense",
+        "OFT.Platform.Core.Providers.PlatformTradingCore",
+        "get_IsFullLicense",
         bytes.fromhex("172a"),
     ),
     PatchSpec(
@@ -230,10 +242,34 @@ PLATFORM_PATCH_SPECS = [
         expected_parameter_count=3,
         expected_return_element=0x02,
     ),
+    PatchSpec(
+        "ReplayPlayerViewModelBase.get_MaxAvailableInstruments",
+        "OFT.Platform.ViewModels.ReplayPlayer.ReplayPlayerViewModelBase",
+        "get_MaxAvailableInstruments",
+        bytes.fromhex("21ffffffffffffff7f2a"),
+    ),
+    PatchSpec(
+        "WatchlistViewModelBase.get_MaximumInstrumentCount",
+        "OFT.Platform.ViewModels.Watchlists.WatchlistViewModelBase",
+        "get_MaximumInstrumentCount",
+        bytes.fromhex("20ffffff7f2a"),
+    ),
 ]
 
 
 CORE_PATCH_SPECS = [
+    PatchSpec(
+        "AuthClient.CheckFeature",
+        "OFT.Core.Server.Auth.AuthClient",
+        "CheckFeature",
+        bytes.fromhex("172a"),
+    ),
+    PatchSpec(
+        "AuthClient.get_AccountType",
+        "OFT.Core.Server.Auth.AuthClient",
+        "get_AccountType",
+        bytes.fromhex("172a"),
+    ),
     PatchSpec(
         "RequestLimitCorrector.TryGetLimit<TRequest>",
         "OFT.Core.DataProvider.RequestLimitCorrector",

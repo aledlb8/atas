@@ -36,21 +36,21 @@ The commands create:
 - `OFT.Platform.Core.patched.dll`
 - `OFT.Core.patched.dll`
 
-Both patched DLLs are required. Use the generated copies, renamve them
-to its original name and replaced them wherever you have installed ATAS.
+Both patched DLLs are required. Use the generated copies, rename them to their
+original names, and replace the corresponding challenge DLLs.
 
 ### How to recognize success
 
 For an original `OFT.Platform.Core.dll`, the expected summary is:
 
 ```text
-Summary: 0 already patched, 26 to patch, 0 need attention.
+Summary: 0 already patched, 30 to patch, 0 need attention.
 ```
 
 For an original `OFT.Core.dll`, the expected summary is:
 
 ```text
-Summary: 0 already patched, 2 to patch, 0 need attention.
+Summary: 0 already patched, 4 to patch, 0 need attention.
 ```
 
 The script then prints the path of the patched DLL it wrote. If it says
@@ -76,8 +76,8 @@ py .\patch_atas.py .\OFT.Core.patched.dll --dry-run
 The expected summaries are:
 
 ```text
-Summary: 26 already patched, 0 to patch, 0 need attention.
-Summary: 2 already patched, 0 to patch, 0 need attention.
+Summary: 30 already patched, 0 to patch, 0 need attention.
+Summary: 4 already patched, 0 to patch, 0 need attention.
 ```
 
 ## Common Problems
@@ -170,15 +170,26 @@ available:
 - limit-query helpers report no limit;
 - paywall and license-expired UI helpers return false;
 - authorization checks return true;
+- the central account-feature check returns true and the local account class is
+  treated as `Live`;
+- full-license state returns true and account-expiration checks return false;
 - connector feature and category-limit checks allow access;
 - provider-list checks allow server-backed connectors;
 - the connector-limited popup completes without being displayed;
 - AI-agent market-data policy results report `IsAllowed = true` while retaining
   source name, source type, and delay metadata;
-- the default-aware request corrector does not insert a fallback history limit.
+- the default-aware request corrector does not insert a fallback history limit;
+- Replay uses the unrestricted Live history tier and accepts up to
+  `Int64.MaxValue` selected instruments;
+- watchlists accept up to `Int32.MaxValue` instruments.
 
-The core patch changes the final request-limit fallback so it reports no limit
-instead of trimming real-time chart history to ten days.
+The core patches enable every feature queried through `AuthClient.CheckFeature`,
+classify the local account as Live, and make the final request-limit fallback
+report no limit instead of trimming real-time chart history.
+
+These changes remove client-side challenge restrictions. They cannot create
+market data that a connected source does not provide, synthesize missing
+server configuration, or override a disconnected connector.
 
 ## ReadyToRun handling
 
@@ -189,8 +200,8 @@ runtime uses the patched method bodies.
 
 The ReadyToRun header counts as one result in each summary. Consequently:
 
-- the platform assembly reports 26 total patch operations;
-- the core assembly reports 2 total patch operations.
+- the platform assembly reports 30 total patch operations;
+- the core assembly reports 4 total patch operations.
 
 ## Method-body rewriting
 
